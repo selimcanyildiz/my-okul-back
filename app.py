@@ -1,17 +1,10 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options  # Chrome seçenekleri için import
-from webdriver_manager.chrome import ChromeDriverManager
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
-# FastAPI uygulamasını başlat
 app = FastAPI()
 
-# CORS middleware'ini ekleyelim
+# CORS için yapılandırma
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Herhangi bir domain'e izin veriyoruz (prod'da domain kısıtlaması yapmalısınız)
@@ -20,47 +13,49 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Kullanıcıdan alınacak verileri tanımlayan Pydantic modeli
-class LoginData(BaseModel):
-    username: str
-    password: str
-    url: str
-    usernameInput: str
-    passwordInput: str
-    loginBtn: str
+# Statik platform verileri
+platformlar = {
+    "egitimparki": {
+        "url": "https://www.egitimparki.com/Login",
+        "username": "1535-175",
+        "password": "9A01E",
+        "usernameInputId": "txtUserName",
+        "passwordInputId": "txtPassword",
+        "loginButtonId": "btnLogin",
+    },
+    "rokodemi": {
+        "url": "https://www.rokodemi.com/Login",
+        "username": "MEHMETAKIFMERMER",
+        "password": "1905gs",
+        "usernameInputId": "Email",
+        "passwordInputId": "Password",
+        "loginButtonId": "submit",
+    },
+}
 
-# Giriş yapma işlemi
-@app.post("/login/")
-async def login(data: LoginData):
-    # Tarayıcı seçeneklerini belirleyelim (headless olmaması için)
-    chrome_options = Options()
-    # chrome_options.add_argument('--headless')  # Bu satır kaldırıldı, tarayıcı görünür olacak
+# Tüm istekleri logla
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    print(f"Gelen istek: {request.method} {request.url}")
+    response = await call_next(request)
+    return response
 
-    # WebDriver'ı başlat (Chrome)
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-    
-    try:
-        # Hedef siteye git
-        driver.get(data.url)
+# Gelen istekler için model
+class PlatformRequest(BaseModel):
+    platformName: str
 
-        # Kullanıcı adı ve şifreyi ilgili alanlara yaz
-        driver.find_element(By.ID, data.usernameInput).send_keys(data.username)
-        driver.find_element(By.ID, data.passwordInput).send_keys(data.password)
+@app.post("/login-to-platform")
+async def login_to_platform(request: PlatformRequest):
+    platform_name = request.platformName
+    print("Gelen platform adı:", platform_name)
 
-        # Login butonuna tıkla
-        driver.find_element(By.ID, data.loginBtn).click()
+    platform_data = platformlar.get(platform_name)
 
-        # Başarıyla giriş yapıldıktan sonra, cookies (çerezler) alın
-        cookies = driver.get_cookies()
+    if platform_data:
+        return platform_data
+    else:
+        raise HTTPException(status_code=404, detail="Platform bulunamadı")
 
-        # Çerezleri frontend'e döndür
-        return JSONResponse(content={"cookies": cookies}, status_code=200)
-
-    except Exception as e:
-        # Bir hata oluşursa, hata mesajını döndür
-        raise HTTPException(status_code=500, detail=str(e))
-
-    finally:
-        # Tarayıcıyı kapatmak istemiyoruz, o yüzden bu satırı **silmeliyiz**.
-        # driver.quit()  # Tarayıcıyı kapatma satırını kaldırıyoruz
-        print("")
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
