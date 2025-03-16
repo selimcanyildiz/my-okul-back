@@ -1,6 +1,9 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
 
 app = FastAPI()
 
@@ -55,6 +58,22 @@ async def login_to_platform(request: PlatformRequest):
         return platform_data
     else:
         raise HTTPException(status_code=404, detail="Platform bulunamadı")
+
+
+# Statik dosyaların bulunduğu dizini tanımla
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/download-extension")
+async def download_extension():
+    # extension.zip dosyasının tam yolunu belirt
+    file_path = os.path.join("static", "extension.zip")
+    
+    # Dosyanın mevcut olduğundan emin olun
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type='application/zip', filename="extension.zip")
+    else:
+        return {"error": "Dosya bulunamadı"}
+    
 
 if __name__ == "__main__":
     import uvicorn
