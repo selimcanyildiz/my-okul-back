@@ -34,6 +34,14 @@ platformlar = {
         "passwordInputId": "Password",
         "loginButtonId": "submit",
     },
+    "eyotek": {
+        "url": "https://mykolej.eyotek.com/v1/",
+        "username": "20337",
+        "password": "5T5BR2V",
+        "usernameInputId": "txtUsername",
+        "passwordInputId": "txtPassword",
+        "loginButtonId": "btnLogin",
+    },
 }
 
 # Tüm istekleri logla
