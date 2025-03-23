@@ -19,7 +19,7 @@ app.add_middleware(
 # Statik platform verileri
 platformlar = {
     "egitimparki": {
-        "url": "https://www.egitimparki.com/Login",
+        "url": "https://akademi.myokullari.com/Login",
         "username": "1535-175",
         "password": "9A01E",
         "usernameInputId": "txtUserName",
