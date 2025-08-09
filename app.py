@@ -1,88 +1,53 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-import os
+from models import authenticate_user
+from jwt_utils import create_access_token, generate_bilisimgaraji_jwt, generate_bookr_jwt
+from auth import get_current_user
+from config import BOOKR_SSO_ID
 
 app = FastAPI()
 
-# CORS için yapılandırma
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Herhangi bir domain'e izin veriyoruz (prod'da domain kısıtlaması yapmalısınız)
+    allow_origins=["http://localhost:3000"],  # Frontend origin'i buraya yaz
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Statik platform verileri
-platformlar = {
-    "egitimparki": {
-        "url": "https://akademi.myokullari.com/Login",
-        "username": "1535-175",
-        "password": "9A01E",
-        "usernameInputId": "txtUserName",
-        "passwordInputId": "txtPassword",
-        "loginButtonId": "btnLogin",
-    },
-    "rokodemi": {
-        "url": "https://www.rokodemi.com/Login",
-        "username": "MEHMETAKIFMERMER",
-        "password": "1905gs",
-        "usernameInputId": "Email",
-        "passwordInputId": "Password",
-        "loginButtonId": "submit",
-    },
-    "eyotek": {
-        "url": "https://mykolej.eyotek.com/v1/",
-        "username": "20337",
-        "password": "5T5BR2V",
-        "usernameInputId": "txtUsername",
-        "passwordInputId": "txtPassword",
-        "loginButtonId": "btnLogin",
-    },
-}
 
-# Tüm istekleri logla
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    print(f"Gelen istek: {request.method} {request.url}")
-    response = await call_next(request)
-    return response
+class LoginRequest(BaseModel):
+    username: str
+    password: str
 
-# Gelen istekler için model
 class PlatformRequest(BaseModel):
     platformName: str
 
+@app.post("/login")
+def login(data: LoginRequest):
+    user = authenticate_user(data.username, data.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Kullanıcı adı veya şifre hatalı")
+
+    token = create_access_token({"sub": data.username})
+    return {"access_token": token, "token_type": "bearer"}
+
+
 @app.post("/login-to-platform")
-async def login_to_platform(request: PlatformRequest):
-    platform_name = request.platformName
-    print("Gelen platform adı:", platform_name)
+def login_to_platform(req: PlatformRequest, user=Depends(get_current_user)):
+    platform = req.platformName.lower()
 
-    platform_data = platformlar.get(platform_name)
+    if platform == "bilisimgaraji":
+        jwt_token = generate_bilisimgaraji_jwt(user)
+        redirect_url = f"https://lms.bilisimgaraji.com/loginsso?c={jwt_token}"
+        return {"redirect_url": redirect_url}
 
-    if platform_data:
-        return platform_data
+    elif platform == "bookr":
+        jwt_token = generate_bookr_jwt(user)
+        deeplink_url = f"bookrclass://app?clientToken={jwt_token}&ssoId={BOOKR_SSO_ID}"
+        return {"redirect_url": deeplink_url}
+
     else:
-        raise HTTPException(status_code=404, detail="Platform bulunamadı")
-
-
-# Statik dosyaların bulunduğu dizini tanımla
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-@app.get("/download-extension")
-async def download_extension():
-    # extension.zip dosyasının tam yolunu belirt
-    file_path = os.path.join("static", "extension.zip")
-    
-    # Dosyanın mevcut olduğundan emin olun
-    if os.path.exists(file_path):
-        return FileResponse(file_path, media_type='application/zip', filename="extension.zip")
-    else:
-        return {"error": "Dosya bulunamadı"}
-    
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+        raise HTTPException(status_code=404, detail="Bu platform şu anda desteklenmiyor")
