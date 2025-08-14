@@ -16,7 +16,7 @@ fake_users_db = {
         "role": "Student",  # Added for Kolibri
         "level": 9  # Added for Kolibri
     },
-    "ogrenci2": {
+    "ali": {
         "username": "ali",
         "password": "12345",
         "id": "2",
