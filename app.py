@@ -1,22 +1,20 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
-from models import authenticate_user
-from jwt_utils import create_access_token, generate_bilisimgaraji_jwt, generate_bookr_jwt
+from models import authenticate_user, fake_users_db
+from jwt_utils import create_access_token, generate_bilisimgaraji_jwt, generate_kolibri_jwt, decode_token
 from auth import get_current_user
-from config import BOOKR_SSO_ID
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Frontend origin'i buraya yaz
+    allow_origins=["http://localhost:3000", "https://api.v2.bookrclass.com"],  # Frontend origin
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 class LoginRequest(BaseModel):
     username: str
@@ -34,7 +32,6 @@ def login(data: LoginRequest):
     token = create_access_token({"sub": data.username})
     return {"access_token": token, "token_type": "bearer"}
 
-
 @app.post("/login-to-platform")
 def login_to_platform(req: PlatformRequest, user=Depends(get_current_user)):
     platform = req.platformName.lower()
@@ -43,11 +40,46 @@ def login_to_platform(req: PlatformRequest, user=Depends(get_current_user)):
         jwt_token = generate_bilisimgaraji_jwt(user)
         redirect_url = f"https://lms.bilisimgaraji.com/loginsso?c={jwt_token}"
         return {"redirect_url": redirect_url}
-
-    elif platform == "bookr":
-        jwt_token = generate_bookr_jwt(user)
-        deeplink_url = f"bookrclass://app?clientToken={jwt_token}&ssoId={BOOKR_SSO_ID}"
-        return {"redirect_url": deeplink_url}
+    
+    elif platform == "kolibri":
+        jwt_token = generate_kolibri_jwt(user)
+        from config import KOLIBRI_SSO_ID
+        redirect_url = f"https://api.v2.bookrclass.com/api/oauth/sso/app/login/{KOLIBRI_SSO_ID}/?token={jwt_token}&returnUrl=https://www.bookrclass.com/?platform=web"
+        return {"redirect_url": redirect_url}
 
     else:
         raise HTTPException(status_code=404, detail="Bu platform şu anda desteklenmiyor")
+    
+from fastapi import Query
+
+@app.get("/auth/validatetoken")
+async def validate_token(token: str = Query(...)):
+    decoded = decode_token(token)
+    if not decoded:
+        raise HTTPException(status_code=401, detail="Geçersiz veya süresi dolmuş token")
+
+    username = decoded.get("sub")
+    user = fake_users_db.get(username)
+    if not user:
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+
+    # BookR Class'ın beklediği SsoUserDto formatında yanıt
+    sso_user_dto = {
+        "id": str(user.get("id", "")),
+        "appGeneratedId": str(user.get("id", "")),  # Aynı ID kullanılabilir
+        "username": user.get("username", ""),
+        "firstName": user.get("ad", ""),
+        "lastName": user.get("soyad", ""),
+        "name": f"{user.get('ad', '')} {user.get('soyad', '')}",
+        "role": user.get("role", "Student"),
+        "school_class": [
+            {
+                "schoolcode": str(user.get("okul_id", "")),
+                "classname": f"{user.get('sube_seviye', '')}/{user.get('sube_sinif', '')}",
+                "schoolname": user.get("okul_adi", "")
+            }
+        ],
+        "level": user.get("level", 1),
+        "hidden_levels": []  # Opsiyonel, gerekirse doldurulabilir
+    }
+    return sso_user_dto

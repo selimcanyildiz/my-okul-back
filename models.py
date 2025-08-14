@@ -12,7 +12,9 @@ fake_users_db = {
         "okul_adi": "Demo Okul",
         "program_tipi": "1",
         "sube_seviye": "11",
-        "sube_sinif": "A"
+        "sube_sinif": "A",
+        "role": "Student",  # Added for Kolibri
+        "level": 9  # Added for Kolibri
     }
 }
 
