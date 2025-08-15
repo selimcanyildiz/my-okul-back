@@ -1,36 +1,68 @@
 # Sahte kullanıcı verisi
 fake_users_db = {
-    "Can": {
-        "username": "Can",
+    "ogrenci1": {
+        "username": "ogrenci1",
         "password": "1234",
         "id": "1",
         "ogrenci_no": "675",
-        "ad": "Can",
-        "soyad": "Yıldız",
+        "ad": "Ahmet",
+        "soyad": "Can",
         "cinsiyet": "1",
         "okul_id": "1",
-        "okul_adi": "My Okul Ankara",
+        "okul_adi": "Demo Okul",
         "program_tipi": "1",
         "sube_seviye": "11",
         "sube_sinif": "A",
         "role": "Student",  # Added for Kolibri
-        "level": 11  # Added for Kolibri
+        "level": 9  # Added for Kolibri
     },
-    "Elif": {
-        "username": "Elif",
+    "ali": {
+        "username": "ali",
         "password": "12345",
         "id": "2",
         "ogrenci_no": "701",
-        "ad": "Elif",
+        "ad": "Ali",
         "soyad": "Yılmaz",
-        "cinsiyet": "2",
+        "cinsiyet": "1",
         "okul_id": "1",
-        "okul_adi": "My Okul İzmir",
+        "okul_adi": "Demo Okul",
         "program_tipi": "1",
-        "sube_seviye": "10",
-        "sube_sinif": "C",
+        "sube_seviye": "11",
+        "sube_sinif": "A",
         "role": "Student",  # Added for Kolibri
-        "level": 10  # Added for Kolibri
+        "level": 9  # Added for Kolibri
+    },
+    "Celal": {
+        "username": "Celal",
+        "password": "12",
+        "id": "3",
+        "ogrenci_no": "789",
+        "ad": "Ahmet",
+        "soyad": "Can",
+        "cinsiyet": "1",
+        "okul_id": "1",
+        "okul_adi": "My Okul İstanbul",
+        "program_tipi": "1",
+        "sube_seviye": "12",
+        "sube_sinif": "A",
+        "role": "Student",  # Added for Kolibri
+        "level": 9  # Added for Kolibri
+    },
+    "Recep": {
+        "username": "Recep",
+        "password": "13",
+        "id": "4",
+        "ogrenci_no": "942",
+        "ad": "Recep",
+        "soyad": "Öztürk",
+        "cinsiyet": "1",
+        "okul_id": "1",
+        "okul_adi": "My Okul Ankara",
+        "program_tipi": "1",
+        "sube_seviye": "9",
+        "sube_sinif": "B",
+        "role": "Student",  # Added for Kolibri
+        "level": 9  # Added for Kolibri
     }
 }
 
