@@ -10,7 +10,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Frontend origin
+    allow_origins=["http://localhost:3000", "https://api.v2.bookrclass.com", "https://web.bookrclass.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,8 +49,6 @@ def login_to_platform(req: PlatformRequest, user=Depends(get_current_user)):
 
     else:
         raise HTTPException(status_code=404, detail="Bu platform şu anda desteklenmiyor")
-    
-from fastapi import Query
 
 @app.get("/auth/validatetoken")
 async def validate_token(token: str = Query(...)):
@@ -66,7 +64,7 @@ async def validate_token(token: str = Query(...)):
     # BookR Class'ın beklediği SsoUserDto formatında yanıt
     sso_user_dto = {
         "id": str(user.get("id", "")),
-        "appGeneratedId": str(user.get("id", "")),  # Aynı ID kullanılabilir
+        "appGeneratedId": str(user.get("id", "")),
         "username": user.get("username", ""),
         "firstName": user.get("ad", ""),
         "lastName": user.get("soyad", ""),
@@ -80,6 +78,6 @@ async def validate_token(token: str = Query(...)):
             }
         ],
         "level": user.get("level", 1),
-        "hidden_levels": []  # Opsiyonel, gerekirse doldurulabilir
+        "hidden_levels": []
     }
     return sso_user_dto

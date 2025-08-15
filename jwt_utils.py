@@ -13,7 +13,7 @@ def decode_token(token: str):
     try:
         decoded = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return decoded
-    except JWTError:
+    except JWTError as e:
         return None
 
 def generate_bilisimgaraji_jwt(user):
@@ -45,7 +45,8 @@ def generate_bilisimgaraji_jwt(user):
 def generate_kolibri_jwt(user):
     try:
         payload = {
-            "nameid": str(user.get("id", "")),  # Kolibri expects userId in 'nameid' claim
+            "sub": user.get("username", ""),  # Use username as sub for validation
+            "nameid": str(user.get("id", "")),  # Keep nameid for Kolibri compatibility
             "nbf": int(datetime.utcnow().timestamp()),
             "iat": int(datetime.utcnow().timestamp()),
             "exp": int((datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)).timestamp())
