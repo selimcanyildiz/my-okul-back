@@ -10,7 +10,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://api.v2.bookrclass.com", "https://web.bookrclass.com"],
+    allow_origins=["http://localhost:3000", "https://api.v2.bookrclass.com", "https://web.bookrclass.com","https://my-okul-front.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
