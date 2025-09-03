@@ -63,6 +63,22 @@ fake_users_db = {
         "sube_sinif": "B",
         "role": "Student",  # Added for Kolibri
         "level": 9  # Added for Kolibri
+    },
+    "Abdülhamit": {
+        "username": "Abdülhamit",
+        "password": "1453",
+        "id": "5",
+        "ogrenci_no": "789",
+        "ad": "Abdülhamit",
+        "soyad": "Yıldırım",
+        "cinsiyet": "1",
+        "okul_id": "1",
+        "okul_adi": "My Okul Ankara",
+        "program_tipi": "1",
+        "sube_seviye": "9",
+        "sube_sinif": "B",
+        "role": "Student",  # Added for Kolibri
+        "level": 9  # Added for Kolibri
     }
 }
 
