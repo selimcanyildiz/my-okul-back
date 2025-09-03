@@ -65,7 +65,7 @@ fake_users_db = {
         "level": 9  # Added for Kolibri
     },
     "Abdülhamit": {
-        "username": "Abdülhamit",
+        "username": "11111111111",
         "password": "1453",
         "id": "5",
         "ogrenci_no": "789",
