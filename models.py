@@ -32,22 +32,6 @@ fake_users_db = {
         "role": "Student",  # Added for Kolibri
         "level": 9  # Added for Kolibri
     },
-    "Celal": {
-        "username": "Celal",
-        "password": "12",
-        "id": "3",
-        "ogrenci_no": "789",
-        "ad": "Ahmet",
-        "soyad": "Can",
-        "cinsiyet": "1",
-        "okul_id": "1",
-        "okul_adi": "My Okul İstanbul",
-        "program_tipi": "1",
-        "sube_seviye": "12",
-        "sube_sinif": "A",
-        "role": "Student",  # Added for Kolibri
-        "level": 9  # Added for Kolibri
-    },
     "Recep": {
         "username": "Recep",
         "password": "13",
