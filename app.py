@@ -17,7 +17,9 @@ app.include_router(student_router.router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000", 
+        "http://localhost:3000",
+        "http://mypanel.myokullari.com",
+        "https://mypanel.myokullari.com", 
         "https://api.v2.bookrclass.com", 
         "https://web.bookrclass.com",
         "https://my-okul-front.vercel.app"
