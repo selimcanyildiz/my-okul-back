@@ -1,0 +1,28 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - main  # sadece main branch'e push yapılınca çalışır
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Sunucuya deploy et
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: 213.159.6.100      # senin sunucu IP veya domain
+          username: root           # senin sunucu kullanıcı adı
+          key: ${{ secrets.SSH_PRIVATE_KEY }}  # mevcut secret
+          port: 23422              # SSH portun
+          script: |
+            cd /opt/myokul-backend
+            git pull origin main
+            source venv/bin/activate
+            pip install -r requirements.txt
+            systemctl restart myokul-backend
