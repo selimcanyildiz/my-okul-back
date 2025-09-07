@@ -1,73 +1,52 @@
-# Sahte kullanıcı verisi
-fake_users_db = {
-    "ogrenci1": {
-        "username": "ogrenci1",
-        "password": "1234",
-        "id": "1",
-        "ogrenci_no": "675",
-        "ad": "Ahmet",
-        "soyad": "Can",
-        "cinsiyet": "1",
-        "okul_id": "1",
-        "okul_adi": "Demo Okul",
-        "program_tipi": "1",
-        "sube_seviye": "11",
-        "sube_sinif": "A",
-        "role": "Student",  # Added for Kolibri
-        "level": 9  # Added for Kolibri
-    },
-    "ali": {
-        "username": "ali",
-        "password": "12345",
-        "id": "2",
-        "ogrenci_no": "701",
-        "ad": "Ali",
-        "soyad": "Yılmaz",
-        "cinsiyet": "1",
-        "okul_id": "1",
-        "okul_adi": "Demo Okul",
-        "program_tipi": "1",
-        "sube_seviye": "11",
-        "sube_sinif": "A",
-        "role": "Student",  # Added for Kolibri
-        "level": 9  # Added for Kolibri
-    },
-    "Recep": {
-        "username": "Recep",
-        "password": "13",
-        "id": "4",
-        "ogrenci_no": "942",
-        "ad": "Recep",
-        "soyad": "Öztürk",
-        "cinsiyet": "1",
-        "okul_id": "1",
-        "okul_adi": "My Okul Ankara",
-        "program_tipi": "1",
-        "sube_seviye": "9",
-        "sube_sinif": "B",
-        "role": "Student",  # Added for Kolibri
-        "level": 9  # Added for Kolibri
-    },
-    "11111111111": {
-        "username": "11111111111",
-        "password": "1453",
-        "id": "5",
-        "ogrenci_no": "789",
-        "ad": "Abdülhamit",
-        "soyad": "Yıldırım",
-        "cinsiyet": "1",
-        "okul_id": "1",
-        "okul_adi": "My Okul Ankara",
-        "program_tipi": "1",
-        "sube_seviye": "9",
-        "sube_sinif": "B",
-        "role": "Student",  # Added for Kolibri
-        "level": 9  # Added for Kolibri
-    }
-}
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, func
+from sqlalchemy.orm import relationship
+from database import Base
 
-def authenticate_user(username: str, password: str):
-    user = fake_users_db.get(username)
-    if not user or user["password"] != password:
-        return None
-    return user
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True, nullable=False)
+    password = Column(String, nullable=False)
+    role = Column(String, nullable=False)
+    full_name = Column(String)
+    tc = Column(String(11))
+    phone = Column(String(15))
+
+class School(Base):
+    __tablename__ = "schools"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)  # Uzunluk kısıtlamasını açıkça belirttik
+    admin_id = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(DateTime(timezone=False), server_default=func.now())  # timezone=False
+    students = relationship("Student", back_populates="school")
+
+class Student(Base):
+    __tablename__ = "students"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tc = Column(String(11), unique=True, nullable=False)
+    ogrenci_no = Column(String(20), nullable=False)
+    ad = Column(String(50), nullable=False)
+    soyad = Column(String(50), nullable=False)
+    cinsiyet = Column(String(1))
+    program_tipi = Column(String(10))
+    sube_seviye = Column(String(10))
+    sube_sinif = Column(String(10))
+    
+    # şifreli sistemler
+    bgkull = Column(String(50))
+    bgsif = Column(String(50))
+    klbkull = Column(String(50))
+    klbsif = Column(String(50))
+    sınavzakull = Column(String(50))
+    sınavzasif = Column(String(50))
+    morpakull = Column(String(50))
+    morpasif = Column(String(50))
+
+    # login için username ve password
+    username = Column(String(50), unique=True, nullable=False)
+    password = Column(String(50), nullable=False)
+
+    # ilişki
+    school_id = Column(Integer, ForeignKey("schools.id"), nullable=False)
+    school = relationship("School", back_populates="students")
