@@ -34,19 +34,24 @@ class Student(Base):
     sube_sinif = Column(String(10))
     
     # şifreli sistemler
-    bgkull = Column(String(50))
-    bgsif = Column(String(50))
-    klbkull = Column(String(50))
-    klbsif = Column(String(50))
-    sınavzakull = Column(String(50))
-    sınavzasif = Column(String(50))
-    morpakull = Column(String(50))
-    morpasif = Column(String(50))
+    bgkull = Column(String(50), nullable=True)
+    bgsif = Column(String(50), nullable=True)
+    klbkull = Column(String(50), nullable=True)
+    klbsif = Column(String(50), nullable=True)
+    sınavzakull = Column(String(50), nullable=True)
+    sınavzasif = Column(String(50), nullable=True)
+    morpakull = Column(String(50), nullable=True)
+    morpasif = Column(String(50), nullable=True)
+    parent_phone = Column(String(15), nullable=True)
+
 
     # login için username ve password
     username = Column(String(50), unique=True, nullable=False)
     password = Column(String(50), nullable=False)
 
+    parent_phone = Column(String(15), nullable=False)  # <-- Yeni alan
+
     # ilişki
     school_id = Column(Integer, ForeignKey("schools.id"), nullable=False)
     school = relationship("School", back_populates="students")
+

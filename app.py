@@ -3,9 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from routers import school_router
 from routers import student_router
-from auth import get_current_user, authenticate_user
+from auth import get_current_user
 from database import get_db
-from models import User
+from models import User, Student
 from jwt_utils import create_access_token, generate_bilisimgaraji_jwt, generate_kolibri_jwt, decode_token
 from sqlalchemy.orm import Session
 
@@ -36,14 +36,28 @@ class LoginRequest(BaseModel):
 class PlatformRequest(BaseModel):
     platformName: str
 
+def authenticate_user(db: Session, username: str, password: str):
+    # Önce users tablosuna bak
+    user = db.query(User).filter(User.username == username, User.password == password).first()
+    if user:
+        return user
+
+    # Sonra students tablosuna bak
+    student = db.query(Student).filter(Student.username == username, Student.password == password).first()
+    if student:
+        return student
+
+    return None
+
 @app.post("/login")
 def login(data: LoginRequest, db: Session = Depends(get_db)):
     user = authenticate_user(db, data.username, data.password)
     if not user:
         raise HTTPException(status_code=401, detail="Kullanıcı adı veya şifre hatalı")
 
+    # Token oluştururken her iki tablodaki username alanını kullan
     token = create_access_token({"sub": user.username})
-    return {"access_token": token, "token_type": "bearer"}
+    return {"user": user, "access_token": token, "token_type": "bearer"}
 
 @app.post("/login-to-platform")
 def login_to_platform(req: PlatformRequest, user=Depends(get_current_user)):
@@ -72,17 +86,20 @@ def validate_token(token: str = Query(...), db: Session = Depends(get_db)):
     username = decoded.get("sub")
     user = db.query(User).filter(User.username == username).first()
     if not user:
-        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        # users bulunmazsa students tablosuna bak
+        user = db.query(Student).filter(Student.username == username).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
 
     sso_user_dto = {
-        "id": str(user.id),
-        "appGeneratedId": str(user.id),
-        "username": user.username,
-        "firstName": user.full_name.split(" ")[0] if user.full_name else "",
-        "lastName": user.full_name.split(" ")[1] if user.full_name else "",
-        "name": user.full_name or "",
-        "role": user.role,
-        "school_class": [],  # Burayı okul bilgisi ile doldurabilirsiniz
+        "id": str(getattr(user, "id", "")),
+        "appGeneratedId": str(getattr(user, "id", "")),
+        "username": getattr(user, "username", ""),
+        "firstName": getattr(user, "full_name", "").split(" ")[0] if getattr(user, "full_name", "") else "",
+        "lastName": getattr(user, "full_name", "").split(" ")[1] if getattr(user, "full_name", "") else "",
+        "name": getattr(user, "full_name", ""),
+        "role": getattr(user, "role", "student"),  # students için default role
+        "school_class": [],
         "level": 1,
         "hidden_levels": []
     }

@@ -82,3 +82,79 @@ def add_school(
             "phone": new_user.phone
         }
     }
+
+
+@router.get("/{school_id}")
+def get_school(
+    school_id: int,
+    db: Session = Depends(get_db),
+):
+    school = db.query(School).filter(School.id == school_id).first()
+    if not school:
+        raise HTTPException(status_code=404, detail="Okul bulunamadı")
+
+    return {
+        "id": school.id,
+        "name": school.name
+        # Eğer Schools tablosunda başka alanlar varsa onları da ekleyebilirsin
+    }
+
+@router.get("/")
+def get_all_schools(db: Session = Depends(get_db)):
+    schools = db.query(School).all()
+    if not schools:
+        return []
+
+    result = []
+    for s in schools:
+        # Admin bilgilerini çek
+        admin = db.query(User).filter(User.id == s.admin_id).first()
+        admin_info = {
+            "id": admin.id,
+            "full_name": admin.full_name,
+            "tc": admin.tc,
+            "username": admin.username,
+            "password": admin.password,
+            "phone": admin.phone
+        } if admin else {}
+
+        result.append({
+            "id": s.id,
+            "name": s.name,
+            "address": getattr(s, "address", ""),
+            "city": getattr(s, "city", ""),
+            "district": getattr(s, "district", ""),
+            "admin": admin_info
+        })
+
+    return result
+
+@router.get("/by_admin/{admin_id}")
+def get_school_by_admin(
+    admin_id: int,
+    db: Session = Depends(get_db)
+):
+    # Yetkili kullanıcı var mı kontrol et
+    admin_user = db.query(User).filter(User.id == admin_id, User.role == "yetkili").first()
+    if not admin_user:
+        raise HTTPException(status_code=404, detail="Yetkili kullanıcı bulunamadı")
+
+    # Admin_id ile okulu bul
+    school = db.query(School).filter(School.admin_id == admin_id).first()
+    if not school:
+        raise HTTPException(status_code=404, detail="Bu yetkiliye ait okul bulunamadı")
+
+    return {
+        "school": {
+            "id": school.id,
+            "name": school.name,
+            "created_at": school.created_at
+        },
+        "admin": {
+            "id": admin_user.id,
+            "full_name": admin_user.full_name,
+            "tc": admin_user.tc,
+            "username": admin_user.username,
+            "phone": admin_user.phone
+        }
+    }

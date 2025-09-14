@@ -36,4 +36,5 @@ class StudentCreate(BaseModel):
     sınavzasif: str
     morpakull: str
     morpasif: str
+    parent_phone: str
     school_id: int  # hangi okula ait
