@@ -1,12 +1,13 @@
-from fastapi import FastAPI, HTTPException, Depends, Query
+from fastapi import FastAPI, HTTPException, Depends, Query, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from routers import school_router
 from routers import student_router
 from auth import get_current_user
 from database import get_db
-from models import User, Student
+from models import User, Student, School
 from jwt_utils import create_access_token, generate_bilisimgaraji_jwt, generate_kolibri_jwt, decode_token
+from morpa_utils import get_morpa_auth_code, morpa_login, check_morpa_auth_code
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -64,8 +65,50 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     token = create_access_token({"sub": user.username})
     return {"user": user, "access_token": token, "token_type": "bearer"}
 
+@app.get("/stats")
+def get_stats(db: Session = Depends(get_db)):
+    # Öğrenciler
+    total_students = db.query(Student).count()
+    active_students = db.query(Student).filter(Student.last_login.isnot(None)).count()
+    passive_students = db.query(Student).filter(Student.last_login.is_(None)).count()
+
+    # Okullar
+    total_schools = db.query(School).count()
+
+    # Son giriş yapan 5 öğrenci (last_login DESC)
+    recent_logins = (
+        db.query(Student)
+        .filter(Student.last_login.isnot(None))
+        .order_by(Student.last_login.desc())
+        .limit(5)
+        .all()
+    )
+
+    recent_logins_data = [
+        {
+            "id": s.id,
+            "name": s.ad + " " + s.soyad,
+            "school": db.query(School).filter(School.id == s.school_id).first().name if s.school_id else None,
+            "branch": f"{s.sube_sinif} / {s.sube_seviye}",
+            "lastLogin": s.last_login.strftime("%d.%m.%Y %H:%M") if s.last_login else None
+        }
+        for s in recent_logins
+    ]
+
+    return {
+        "total_students": total_students,
+        "active_students": active_students,
+        "passive_students": passive_students,
+        "total_schools": total_schools,
+        "recent_logins": recent_logins_data
+    }
+
 @app.post("/login-to-platform")
-def login_to_platform(req: PlatformRequest, user=Depends(get_current_user)):
+def login_to_platform(
+    req: PlatformRequest,
+    user=Depends(get_current_user),
+    x_forwarded_for: str | None = Header(default=None, alias="X-Forwarded-For")
+):
     platform = req.platformName.lower()
 
     if platform == "bilisimgaraji":
@@ -77,6 +120,20 @@ def login_to_platform(req: PlatformRequest, user=Depends(get_current_user)):
         jwt_token = generate_kolibri_jwt(user)
         from config import KOLIBRI_SSO_ID
         redirect_url = f"https://api.v2.bookrclass.com/api/oauth/sso/app/login/{KOLIBRI_SSO_ID}/?token={jwt_token}&returnUrl=https://www.bookrclass.com/?platform=web"
+        return {"redirect_url": redirect_url}
+    
+    elif platform == "morpa":
+        if not hasattr(user, "tc"):
+            raise HTTPException(status_code=400, detail="Kullanıcı TC kimlik numarası mevcut değil")
+        
+        client_ip = x_forwarded_for or "127.0.0.1"  # Varsayılan IP, production'da uygun IP alınmalı
+        auth_data = get_morpa_auth_code(user.tc, client_ip)
+        
+        # AuthCode'un aktifliğini kontrol et (opsiyonel)
+        if not check_morpa_auth_code(auth_data["authcode"]):
+            raise HTTPException(status_code=400, detail="Morpa AuthCode geçersiz veya aktif değil")
+        
+        redirect_url = morpa_login(auth_data["authcode"], auth_data["domain"])
         return {"redirect_url": redirect_url}
 
     else:
