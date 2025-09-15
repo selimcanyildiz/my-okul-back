@@ -56,9 +56,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=401, detail="Kullanıcı adı veya şifre hatalı")
 
-    # Eğer öğrenci ise last_login güncelle
-    from models import Student
-    if isinstance(user, Student):
+    if hasattr(user, "last_login"):
         user.last_login = datetime.utcnow()
         db.commit()
         db.refresh(user)

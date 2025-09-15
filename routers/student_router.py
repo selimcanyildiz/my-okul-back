@@ -4,6 +4,7 @@ from database import get_db
 from models import Student, School
 from schemas import StudentCreate
 import random
+from datetime import timedelta
 
 router = APIRouter(prefix="/students", tags=["students"])
 
@@ -78,12 +79,11 @@ def get_students_by_school(school_id: int, db: Session = Depends(get_db)):
             "soyad": s.soyad,
             "tc": s.tc,
             "branch": f"{s.sube_seviye} / {s.sube_sinif}",
-            # Okul bilgilerini direkt ekliyoruz
+            "last_login": (s.last_login + timedelta(hours=3)).strftime("%d.%m.%Y %H:%M") if s.last_login else None,
             "school": {
                 "id": school.id,
                 "name": school.name,
                 "address": school.address if hasattr(school, "address") else None,
-                # diğer okul alanları eklenebilir
             }
         })
     return result
@@ -94,7 +94,6 @@ def get_all_students(db: Session = Depends(get_db)):
     result = []
 
     for s in students:
-        # Okul bilgilerini çekiyoruz
         school = db.query(School).filter(School.id == s.school_id).first()
         school_data = None
         if school:
@@ -110,6 +109,7 @@ def get_all_students(db: Session = Depends(get_db)):
             "soyad": s.soyad,
             "tc": s.tc,
             "branch": f"{s.sube_seviye} / {s.sube_sinif}",
+            "last_login": (s.last_login + timedelta(hours=3)).strftime("%d.%m.%Y %H:%M") if s.last_login else None,
             "school": school_data,
             "parent_phone": s.parent_phone,
             "username": s.username
