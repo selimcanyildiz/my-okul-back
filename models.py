@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, func
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, func, TIMESTAMP
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -32,6 +32,8 @@ class Student(Base):
     program_tipi = Column(String(10))
     sube_seviye = Column(String(10))
     sube_sinif = Column(String(10))
+    okul_adi = Column(String(100))                # ✅ yeni alan
+    last_login = Column(TIMESTAMP) 
     
     # şifreli sistemler
     bgkull = Column(String(50), nullable=True)

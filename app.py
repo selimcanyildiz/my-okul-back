@@ -8,6 +8,7 @@ from database import get_db
 from models import User, Student
 from jwt_utils import create_access_token, generate_bilisimgaraji_jwt, generate_kolibri_jwt, decode_token
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 app = FastAPI()
 
@@ -55,7 +56,13 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=401, detail="Kullanıcı adı veya şifre hatalı")
 
-    # Token oluştururken her iki tablodaki username alanını kullan
+    # Eğer öğrenci ise last_login güncelle
+    from models import Student
+    if isinstance(user, Student):
+        user.last_login = datetime.utcnow()
+        db.commit()
+        db.refresh(user)
+
     token = create_access_token({"sub": user.username})
     return {"user": user, "access_token": token, "token_type": "bearer"}
 
