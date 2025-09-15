@@ -32,6 +32,7 @@ def add_students_bulk(students: list[StudentCreate], db: Session = Depends(get_d
             program_tipi=s.program_tipi,
             sube_seviye=s.sube_seviye,
             sube_sinif=s.sube_sinif,
+            okul_adi= s.okul_adi,
             bgkull=s.bgkull,
             bgsif=s.bgsif,
             klbkull=s.klbkull,
@@ -53,6 +54,7 @@ def add_students_bulk(students: list[StudentCreate], db: Session = Depends(get_d
             "password": password,
             "tc": s.tc,
             "school_id": s.school_id,
+            "okul_adi": s.okul_adi,
             "parent_phone": s.parent_phone
         })
 
