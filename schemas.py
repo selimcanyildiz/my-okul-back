@@ -28,6 +28,7 @@ class StudentCreate(BaseModel):
     program_tipi: str
     sube_seviye: str
     sube_sinif: str
+    okul_adi: str
     bgkull: str
     bgsif: str
     klbkull: str
