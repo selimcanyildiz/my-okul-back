@@ -16,9 +16,7 @@ def add_students_bulk(students: list[StudentCreate], db: Session = Depends(get_d
     added_students = []
 
     for s in students:
-        initials = (s.ad[0] + s.soyad[0]).lower()
-        password = f"{initials}{random.randint(1000, 9999)}"
-        username = password
+        password = "123456"  # tüm öğrencilere sabit şifre
 
         school = db.query(School).filter(School.id == s.school_id).first()
         if not school:
@@ -33,7 +31,7 @@ def add_students_bulk(students: list[StudentCreate], db: Session = Depends(get_d
             program_tipi=s.program_tipi,
             sube_seviye=s.sube_seviye,
             sube_sinif=s.sube_sinif,
-            okul_adi= s.okul_adi,
+            okul_adi=s.okul_adi,
             bgkull=s.bgkull,
             bgsif=s.bgsif,
             klbkull=s.klbkull,
@@ -51,7 +49,7 @@ def add_students_bulk(students: list[StudentCreate], db: Session = Depends(get_d
         db.add(new_student)
         added_students.append({
             "full_name": f"{s.ad} {s.soyad}",
-            "username": username,
+            "username": new_student.username,
             "password": password,
             "tc": s.tc,
             "school_id": s.school_id,
@@ -59,9 +57,7 @@ def add_students_bulk(students: list[StudentCreate], db: Session = Depends(get_d
             "parent_phone": s.parent_phone
         })
 
-    # tek seferde commit
     db.commit()
-
     return {"added_students": added_students}
 
 @router.get("/by_school/{school_id}")

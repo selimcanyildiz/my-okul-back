@@ -65,42 +65,93 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     return {"user": user, "access_token": token, "token_type": "bearer"}
 
 @app.get("/stats")
-def get_stats(db: Session = Depends(get_db)):
-    # Öğrenciler
-    total_students = db.query(Student).count()
-    active_students = db.query(Student).filter(Student.last_login.isnot(None)).count()
-    passive_students = db.query(Student).filter(Student.last_login.is_(None)).count()
+def get_stats(
+    school_id: int = Query(..., description="Yetkilinin okul ID'si veya 0 = tüm okullar"),
+    db: Session = Depends(get_db)
+):
+    total_schools = db.query(School).count()  # Toplam okul sayısı
 
-    # Okullar
-    total_schools = db.query(School).count()
+    if school_id == 0:
+        # Tüm okullar için
+        total_students = db.query(Student).count()
+        active_students = db.query(Student).filter(Student.last_login.isnot(None)).count()
+        passive_students = db.query(Student).filter(Student.last_login.is_(None)).count()
 
-    # Son giriş yapan 5 öğrenci (last_login DESC)
-    recent_logins = (
-        db.query(Student)
-        .filter(Student.last_login.isnot(None))
-        .order_by(Student.last_login.desc())
-        .limit(5)
-        .all()
-    )
+        recent_logins = (
+            db.query(Student, School)
+            .join(School, Student.school_id == School.id, isouter=True)
+            .filter(Student.last_login.isnot(None))
+            .order_by(Student.last_login.desc())
+            .limit(5)
+            .all()
+        )
 
-    recent_logins_data = [
-        {
-            "id": s.id,
-            "name": s.ad + " " + s.soyad,
-            "school": db.query(School).filter(School.id == s.school_id).first().name if s.school_id else None,
-            "branch": f"{s.sube_sinif} / {s.sube_seviye}",
-            "lastLogin": s.last_login.strftime("%d.%m.%Y %H:%M") if s.last_login else None
+        recent_logins_data = [
+            {
+                "id": s.id,
+                "name": f"{s.ad} {s.soyad}",
+                "school": school.name if school else None,
+                "branch": f"{s.sube_sinif} / {s.sube_seviye}",
+                "lastLogin": s.last_login.strftime("%d.%m.%Y %H:%M") if s.last_login else None
+            }
+            for s, school in recent_logins
+        ]
+
+        return {
+            "school_id": 0,
+            "school_name": "Tüm Okullar",
+            "total_schools": total_schools,
+            "total_students": total_students,
+            "active_students": active_students,
+            "passive_students": passive_students,
+            "recent_logins": recent_logins_data
         }
-        for s in recent_logins
-    ]
 
-    return {
-        "total_students": total_students,
-        "active_students": active_students,
-        "passive_students": passive_students,
-        "total_schools": total_schools,
-        "recent_logins": recent_logins_data
-    }
+    else:
+        # Belirli okul için
+        total_students = db.query(Student).filter(Student.school_id == school_id).count()
+        active_students = db.query(Student).filter(
+            Student.school_id == school_id,
+            Student.last_login.isnot(None)
+        ).count()
+        passive_students = db.query(Student).filter(
+            Student.school_id == school_id,
+            Student.last_login.is_(None)
+        ).count()
+
+        school = db.query(School).filter(School.id == school_id).first()
+        if not school:
+            raise HTTPException(status_code=404, detail="Okul bulunamadı")
+
+        recent_logins = (
+            db.query(Student)
+            .filter(Student.school_id == school_id, Student.last_login.isnot(None))
+            .order_by(Student.last_login.desc())
+            .limit(5)
+            .all()
+        )
+
+        recent_logins_data = [
+            {
+                "id": s.id,
+                "name": f"{s.ad} {s.soyad}",
+                "school": school.name,
+                "branch": f"{s.sube_sinif} / {s.sube_seviye}",
+                "lastLogin": s.last_login.strftime("%d.%m.%Y %H:%M") if s.last_login else None
+            }
+            for s in recent_logins
+        ]
+
+        return {
+            "school_id": school.id,
+            "school_name": school.name,
+            "total_schools": total_schools,
+            "total_students": total_students,
+            "active_students": active_students,
+            "passive_students": passive_students,
+            "recent_logins": recent_logins_data
+        }
+
 
 @app.post("/login-to-platform")
 def login_to_platform(
