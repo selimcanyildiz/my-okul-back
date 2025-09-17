@@ -1,4 +1,5 @@
 from pydantic import BaseModel, validator
+from typing import Optional
 
 class SchoolCreate(BaseModel):
     school_name: str
@@ -39,3 +40,29 @@ class StudentCreate(BaseModel):
     morpasif: str
     parent_phone: str
     school_id: int  # hangi okula ait
+
+class StudentUpdate(BaseModel):
+    tc: Optional[str]
+    ogrenci_no: Optional[str]
+    ad: Optional[str]
+    soyad: Optional[str]
+    cinsiyet: Optional[str]
+    program_tipi: Optional[str]
+    sube_seviye: Optional[str]
+    sube_sinif: Optional[str]
+    okul_adi: Optional[str]
+    bgkull: Optional[str]
+    bgsif: Optional[str]
+    klbkull: Optional[str]
+    klbsif: Optional[str]
+    sınavzakull: Optional[str]
+    sınavzasif: Optional[str]
+    morpakull: Optional[str]
+    morpasif: Optional[str]
+    cambridgekull: Optional[str]
+    cambridgesif: Optional[str]
+    parent_phone: Optional[str]
+    school_id: Optional[int]
+
+class PasswordUpdate(BaseModel):
+    new_password: str

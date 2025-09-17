@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from auth import get_current_user
 from database import get_db
-from models import User, School
+from models import User, School, Student
 from schemas import SchoolCreate
 import random
 import logging
@@ -157,4 +157,40 @@ def get_school_by_admin(
             "username": admin_user.username,
             "phone": admin_user.phone
         }
+    }
+
+@router.delete("/delete/{school_id}")
+def delete_school(school_id: int, db: Session = Depends(get_db)):
+    # Okulu bul
+    school = db.query(School).filter(School.id == school_id).first()
+    if not school:
+        raise HTTPException(status_code=404, detail="Okul bulunamadı")
+
+    # Okula ait tüm öğrencileri sil
+    students = db.query(Student).filter(Student.school_id == school_id).all()
+    deleted_student_ids = []
+    for student in students:
+        deleted_student_ids.append(student.id)
+        db.delete(student)
+
+    db.commit()  # Öğrencileri commit et
+
+    # Okulu sil
+    school_name = school.name
+    db.delete(school)
+    db.commit()  # Okulu commit et
+
+    # Okul yetkilisini sil (User tablosundan)
+    admin_user = db.query(User).filter(User.id == school.admin_id).first()
+    deleted_admin_id = None
+    if admin_user:
+        deleted_admin_id = admin_user.id
+        db.delete(admin_user)
+        db.commit()  # Admini commit et
+
+    return {
+        "message": f"{school_name} okulu, {len(deleted_student_ids)} öğrencisi ve yetkili kullanıcı başarıyla silindi",
+        "deleted_school_id": school_id,
+        "deleted_student_ids": deleted_student_ids,
+        "deleted_admin_id": deleted_admin_id
     }
