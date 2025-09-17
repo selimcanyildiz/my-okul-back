@@ -60,6 +60,17 @@ def add_students_bulk(students: list[StudentCreate], db: Session = Depends(get_d
     db.commit()
     return {"added_students": added_students}
 
+@router.delete("/delete/{student_id}")
+def delete_student(student_id: int, db: Session = Depends(get_db)):
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Öğrenci bulunamadı")
+
+    db.delete(student)
+    db.commit()
+    return {"message": f"{student.ad} {student.soyad} başarıyla silindi", "deleted_id": student_id}
+
+
 @router.get("/by_school/{school_id}")
 def get_students_by_school(school_id: int, db: Session = Depends(get_db)):
     school = db.query(School).filter(School.id == school_id).first()
@@ -75,6 +86,7 @@ def get_students_by_school(school_id: int, db: Session = Depends(get_db)):
             "soyad": s.soyad,
             "tc": s.tc,
             "branch": f"{s.sube_seviye} / {s.sube_sinif}",
+            "password": s.password,
             "last_login": (s.last_login + timedelta(hours=3)).strftime("%d.%m.%Y %H:%M") if s.last_login else None,
             "school": {
                 "id": school.id,
@@ -104,6 +116,7 @@ def get_all_students(db: Session = Depends(get_db)):
             "ad": s.ad,
             "soyad": s.soyad,
             "tc": s.tc,
+            "password": s.password,
             "branch": f"{s.sube_seviye} / {s.sube_sinif}",
             "last_login": (s.last_login + timedelta(hours=3)).strftime("%d.%m.%Y %H:%M") if s.last_login else None,
             "school": school_data,
