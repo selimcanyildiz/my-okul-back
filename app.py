@@ -10,7 +10,11 @@ from jwt_utils import create_access_token, generate_bilisimgaraji_jwt, generate_
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-app = FastAPI()
+app = FastAPI(
+    title="MY Okulları API",
+    version="1.0.0",
+    root_path="/api"
+)
 
 app.include_router(school_router.router)
 app.include_router(student_router.router)
