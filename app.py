@@ -9,6 +9,7 @@ from models import User, Student, School
 from jwt_utils import create_access_token, generate_bilisimgaraji_jwt, generate_kolibri_jwt, decode_token
 from sqlalchemy.orm import Session
 from datetime import datetime
+import pytz
 
 app = FastAPI(
     title="MY Okulları API",
@@ -61,7 +62,8 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Kullanıcı adı veya şifre hatalı")
 
     if hasattr(user, "last_login"):
-        user.last_login = datetime.utcnow()
+        tz = pytz.timezone("Europe/Istanbul")
+        user.last_login = datetime.now(tz)
         db.commit()
         db.refresh(user)
 
