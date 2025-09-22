@@ -6,9 +6,13 @@ from routers import student_router
 from auth import get_current_user
 from database import get_db
 from models import User, Student, School
-from jwt_utils import create_access_token, generate_bilisimgaraji_jwt, generate_kolibri_jwt, decode_token
+from jwt_utils import create_access_token, generate_bilisimgaraji_jwt, generate_kolibri_jwt, decode_token, get_morpa_authcode
 from sqlalchemy.orm import Session
 from datetime import datetime
+# ... mevcut import'lar ...
+import xml.etree.ElementTree as ET
+import requests
+from fastapi import Request  # Client IP için
 import pytz
 
 app = FastAPI(
@@ -28,7 +32,8 @@ app.add_middleware(
         "https://mypanel.myokullari.com", 
         "https://api.v2.bookrclass.com", 
         "https://web.bookrclass.com",
-        "https://my-okul-front.vercel.app"
+        "https://my-okul-front.vercel.app",
+        "https://*.morpakampus.com"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -159,24 +164,67 @@ def get_stats(
         }
 
 
+# @app.post("/login-to-platform")
+# def login_to_platform(
+#     req: PlatformRequest,
+#     user=Depends(get_current_user)
+# ):
+#     platform = req.platformName.lower()
+
+#     if platform == "bilisimgaraji":
+#         jwt_token = generate_bilisimgaraji_jwt(user)
+#         redirect_url = f"https://lms.bilisimgaraji.com/loginsso?c={jwt_token}"
+#         return {"redirect_url": redirect_url}
+    
+#     elif platform == "kolibri":
+#         jwt_token = generate_kolibri_jwt(user)
+#         from config import KOLIBRI_SSO_ID
+#         redirect_url = f"https://api.v2.bookrclass.com/api/oauth/sso/app/login/{KOLIBRI_SSO_ID}/?token={jwt_token}&returnUrl=https://www.bookrclass.com/?platform=web"
+#         return {"redirect_url": redirect_url}
+
+#     else:
+#         raise HTTPException(status_code=404, detail="Bu platform şu anda desteklenmiyor")
+
+
+
+# ... mevcut kodlar ...
+
 @app.post("/login-to-platform")
 def login_to_platform(
     req: PlatformRequest,
-    user=Depends(get_current_user)
+    user=Depends(get_current_user),
+    request: Request = None  # Client IP için
 ):
     platform = req.platformName.lower()
-
     if platform == "bilisimgaraji":
         jwt_token = generate_bilisimgaraji_jwt(user)
         redirect_url = f"https://lms.bilisimgaraji.com/loginsso?c={jwt_token}"
         return {"redirect_url": redirect_url}
-    
     elif platform == "kolibri":
         jwt_token = generate_kolibri_jwt(user)
         from config import KOLIBRI_SSO_ID
         redirect_url = f"https://api.v2.bookrclass.com/api/oauth/sso/app/login/{KOLIBRI_SSO_ID}/?token={jwt_token}&returnUrl=https://www.bookrclass.com/?platform=web"
         return {"redirect_url": redirect_url}
-
+    elif platform == "morpa":
+        if not hasattr(user, 'tc') or not user.tc:
+            raise HTTPException(status_code=400, detail="Morpa için TC kimlik numarası gerekli")
+        
+        try:
+            # Client IP: Üretimde gerçek IP al, test için dummy
+            client_ip = request.client.host if request else "127.0.0.1"  # Üretimde X-Forwarded-For da kontrol edilebilir
+            morpa_response = get_morpa_authcode(client_ip, user.tc)
+            
+            if morpa_response['ok'] != 1:
+                raise HTTPException(status_code=400, detail=f"Morpa AuthCode alınamadı: {morpa_response.get('message', 'Bilinmeyen hata')}")
+            
+            authcode = morpa_response['authcode']
+            domain = morpa_response['domain']
+            
+            # Redirect URL: Morpa domain'ine giris ile yönlendir
+            redirect_url = f"https://{domain}/api.asp?at=giris&ac={authcode}"
+            return {"redirect_url": redirect_url}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Morpa entegrasyon hatası: {str(e)}")
     else:
         raise HTTPException(status_code=404, detail="Bu platform şu anda desteklenmiyor")
 

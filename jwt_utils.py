@@ -81,3 +81,50 @@ def generate_kolibri_jwt(user):
         return create_access_token(payload)
     except Exception as e:
         raise Exception(f"Kolibri JWT oluşturma hatası: {str(e)}")
+    
+import requests
+import xml.etree.ElementTree as ET
+from typing import Dict
+
+def get_morpa_authcode(uyeip: str, tckimlik: str) -> Dict:
+    """
+    Morpa'dan AuthCode alır (at=ac).
+    Returns: {'ok': 1 or 0, 'authcode': str, 'domain': str, 'message': str}
+    """
+    url = "https://www.morpakampus.com/api.asp"
+    params = {
+        'at': 'ac',
+        'uyeip': uyeip,
+        'tckimlik': tckimlik
+    }
+    
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        xml_content = response.text
+        
+        # XML parse et
+        root = ET.fromstring(xml_content)
+        ok_elem = root.find('.//OK')
+        if ok_elem is None or ok_elem.text != '1':
+            message = root.find('.//text()')  # Hata mesajı için
+            return {'ok': 0, 'message': message.text if message is not None else 'Bilinmeyen hata'}
+        
+        r_elem = root.find('.//R')
+        if r_elem is None:
+            return {'ok': 0, 'message': 'AuthCode XML\'i eksik'}
+        
+        authcode = r_elem.get('authcode', '')
+        domain = r_elem.get('domain', '')
+        
+        return {
+            'ok': 1,
+            'authcode': authcode,
+            'domain': domain,
+            'siniflar': r_elem.get('siniflar', ''),
+            'dersler': r_elem.get('dersler', '')
+        }
+    except requests.RequestException as e:
+        return {'ok': 0, 'message': f'HTTP hatası: {str(e)}'}
+    except ET.ParseError as e:
+        return {'ok': 0, 'message': f'XML parse hatası: {str(e)}'}
