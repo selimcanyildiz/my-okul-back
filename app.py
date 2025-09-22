@@ -180,30 +180,88 @@ def login_to_platform(
     else:
         raise HTTPException(status_code=404, detail="Bu platform şu anda desteklenmiyor")
 
+# @app.get("/auth/validatetoken")
+# def validate_token(token: str = Query(...), db: Session = Depends(get_db)):
+#     decoded = decode_token(token)
+#     if not decoded:
+#         raise HTTPException(status_code=401, detail="Geçersiz veya süresi dolmuş token")
+
+#     username = decoded.get("sub")
+#     user = db.query(User).filter(User.username == username).first()
+#     if not user:
+#         # users bulunmazsa students tablosuna bak
+#         user = db.query(Student).filter(Student.username == username).first()
+#         if not user:
+#             raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+
+#     sso_user_dto = {
+#         "id": str(getattr(user, "id", "")),
+#         "appGeneratedId": str(getattr(user, "id", "")),
+#         "username": getattr(user, "username", ""),
+#         "firstName": getattr(user, "full_name", "").split(" ")[0] if getattr(user, "full_name", "") else "",
+#         "lastName": getattr(user, "full_name", "").split(" ")[1] if getattr(user, "full_name", "") else "",
+#         "name": getattr(user, "full_name", ""),
+#         "role": getattr(user, "role", "student"),  # students için default role
+#         "school_class": [],
+#         "level": 1,
+#         "hidden_levels": []
+#     }
+#     return sso_user_dto
+
 @app.get("/auth/validatetoken")
 def validate_token(token: str = Query(...), db: Session = Depends(get_db)):
     decoded = decode_token(token)
     if not decoded:
         raise HTTPException(status_code=401, detail="Geçersiz veya süresi dolmuş token")
-
+    
     username = decoded.get("sub")
     user = db.query(User).filter(User.username == username).first()
+    is_student = False
     if not user:
-        # users bulunmazsa students tablosuna bak
         user = db.query(Student).filter(Student.username == username).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        is_student = True
+    if not user:
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+
+    # Determine firstName, lastName, and name based on user type
+    if is_student:
+        first_name = getattr(user, "ad", "")
+        last_name = getattr(user, "soyad", "")
+        full_name = f"{first_name} {last_name}".strip()
+        role = "student"
+        # Fetch school details for school_class
+        school = db.query(School).filter(School.id == user.school_id).first()
+        school_class = [
+            {
+                "schoolcode": str(user.school_id),
+                "classname": f"{getattr(user, 'sube_sinif', '')}/{getattr(user, 'sube_seviye', '')}",
+                "schoolname": school.name if school else getattr(user, "okul_adi", "")
+            }
+        ] if school or getattr(user, "okul_adi", "") else []
+        level = int(getattr(user, "sube_seviye", "1")) if getattr(user, "sube_seviye", "").isdigit() else 1
+    else:
+        full_name = getattr(user, "full_name", "")
+        name_parts = full_name.split(" ") if full_name else [""]
+        first_name = name_parts[0] if name_parts else ""
+        last_name = name_parts[1] if len(name_parts) > 1 else ""
+        role = getattr(user, "role", "student")
+        school_class = []
+        level = 1  # Default for non-students; adjust if needed
+
+    # Ensure name is valid
+    if not full_name or full_name.isspace():
+        full_name = f"{first_name or 'Unknown'} {last_name or 'User'}".strip()
 
     sso_user_dto = {
         "id": str(getattr(user, "id", "")),
         "appGeneratedId": str(getattr(user, "id", "")),
         "username": getattr(user, "username", ""),
-        "firstName": getattr(user, "full_name", "").split(" ")[0] if getattr(user, "full_name", "") else "",
-        "lastName": getattr(user, "full_name", "").split(" ")[1] if getattr(user, "full_name", "") else "",
-        "name": getattr(user, "full_name", ""),
-        "role": getattr(user, "role", "student"),  # students için default role
-        "school_class": [],
-        "level": 1,
+        "firstName": first_name,
+        "lastName": last_name,
+        "name": full_name,
+        "role": role,
+        "school_class": school_class,
+        "level": level,
         "hidden_levels": []
     }
     return sso_user_dto
