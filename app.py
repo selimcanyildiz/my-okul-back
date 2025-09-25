@@ -224,7 +224,7 @@ def login_to_platform(
             redirect_url = f"https://{domain}/api.asp?at=giris&ac={authcode}"
             return {"redirect_url": redirect_url}
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Morpa entegrasyon hatası: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Morpa üyeliğiniz aktif değil")
     else:
         raise HTTPException(status_code=404, detail="Bu platform şu anda desteklenmiyor")
 
