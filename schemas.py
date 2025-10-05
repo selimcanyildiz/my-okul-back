@@ -7,6 +7,10 @@ class SchoolCreate(BaseModel):
     admin_surname: str
     admin_tc: str
     admin_phone: str
+    url_anaokul: Optional[str] = None
+    url_ilkokul: Optional[str] = None
+    url_ortaokul: Optional[str] = None
+    url_lise: Optional[str] = None
 
     @validator("admin_tc")
     def validate_tc(cls, v):

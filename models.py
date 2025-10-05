@@ -18,6 +18,10 @@ class School(Base):
     name = Column(String(255), nullable=False)  # Uzunluk kısıtlamasını açıkça belirttik
     admin_id = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=False), server_default=func.now())  # timezone=False
+    url_anaokul = Column(String(500), nullable=True)
+    url_ilkokul = Column(String(500), nullable=True)
+    url_ortaokul = Column(String(500), nullable=True)
+    url_lise = Column(String(500), nullable=True)
     students = relationship("Student", back_populates="school")
 
 class Student(Base):

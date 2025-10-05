@@ -14,29 +14,30 @@ router = APIRouter(prefix="/schools", tags=["schools"])
 
 @router.post("/add")
 def add_school(
-    data: SchoolCreate, 
-    db: Session = Depends(get_db), 
+    data: SchoolCreate,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     logger.debug(f"Received data: {data}")
 
+    # Sadece sysadmin yetkili
     if current_user.role != "sysadmin":
         raise HTTPException(status_code=403, detail="Yetkiniz yok")
 
-    # TC veya username zaten var mı kontrol et
+    # Aynı TC veya username var mı kontrol et
     existing_user = db.query(User).filter(
         (User.username == data.admin_tc) | (User.tc == data.admin_tc)
     ).first()
     if existing_user:
         raise HTTPException(status_code=422, detail="Bu TC kimlik numarası veya kullanıcı adı zaten kayıtlı")
 
-    # Yetkili kullanıcı için username ve password oluştur
+    # Yetkili kullanıcı oluştur
     username = data.admin_tc
     initials = (data.admin_name[0] + data.admin_surname[0]).lower()
     password = f"{initials}{random.randint(1000, 9999)}"
     logger.debug(f"Generated username: {username}, password: {password}")
 
-    # Kullanıcı ekle
+    # Kullanıcı oluşturma
     new_user = User(
         username=username,
         password=password,
@@ -55,8 +56,16 @@ def add_school(
         logger.error(f"Error creating user: {str(e)}")
         raise HTTPException(status_code=422, detail=f"Kullanıcı eklenirken hata: {str(e)}")
 
-    # Okul ekle
-    new_school = School(name=data.school_name, admin_id=new_user.id)
+    # ✅ Okul oluşturma (yeni URL alanları dahil)
+    new_school = School(
+        name=data.school_name,
+        admin_id=new_user.id,
+        url_anaokul=data.url_anaokul,
+        url_ilkokul=data.url_ilkokul,
+        url_ortaokul=data.url_ortaokul,
+        url_lise=data.url_lise
+    )
+
     try:
         db.add(new_school)
         db.commit()
@@ -67,12 +76,16 @@ def add_school(
         logger.error(f"Error creating school: {str(e)}")
         raise HTTPException(status_code=422, detail=f"Okul eklenirken hata: {str(e)}")
 
-    # Response JSON
+    # ✅ Response JSON
     return {
         "school": {
             "id": new_school.id,
             "name": new_school.name,
-            "admin_id": new_user.id
+            "admin_id": new_user.id,
+            "url_anaokul": new_school.url_anaokul,
+            "url_ilkokul": new_school.url_ilkokul,
+            "url_ortaokul": new_school.url_ortaokul,
+            "url_lise": new_school.url_lise,
         },
         "admin_user": {
             "username": username,
@@ -82,6 +95,7 @@ def add_school(
             "phone": new_user.phone
         }
     }
+
 
 
 @router.get("/{school_id}")
@@ -95,7 +109,11 @@ def get_school(
 
     return {
         "id": school.id,
-        "name": school.name
+        "name": school.name,
+        "url_anaokul": school.url_anaokul,
+        "url_ilkokul": school.url_ilkokul,
+        "url_ortaokul": school.url_ortaokul,
+        "url_lise": school.url_lise,
         # Eğer Schools tablosunda başka alanlar varsa onları da ekleyebilirsin
     }
 
@@ -124,7 +142,11 @@ def get_all_schools(db: Session = Depends(get_db)):
             "address": getattr(s, "address", ""),
             "city": getattr(s, "city", ""),
             "district": getattr(s, "district", ""),
-            "admin": admin_info
+            "admin": admin_info,
+            "url_anaokul": s.url_anaokul,
+            "url_ilkokul": s.url_ilkokul,
+            "url_ortaokul": s.url_ortaokul,
+            "url_lise": s.url_lise
         })
 
     return result
@@ -193,4 +215,79 @@ def delete_school(school_id: int, db: Session = Depends(get_db)):
         "deleted_school_id": school_id,
         "deleted_student_ids": deleted_student_ids,
         "deleted_admin_id": deleted_admin_id
+    }
+
+@router.put("/update/{school_id}")
+def update_school(
+    school_id: int,
+    data: SchoolCreate,  # aynı şemayı kullanıyoruz (gerekirse ayrı bir Update şeması da tanımlanabilir)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    logger.debug(f"Update request for school_id={school_id} with data={data}")
+
+    # Yalnızca sysadmin yetkili
+    if current_user.role != "sysadmin":
+        raise HTTPException(status_code=403, detail="Yetkiniz yok")
+
+    # Okulu bul
+    school = db.query(School).filter(School.id == school_id).first()
+    if not school:
+        raise HTTPException(status_code=404, detail="Okul bulunamadı")
+
+    # Yetkili kullanıcıyı bul
+    admin_user = db.query(User).filter(User.id == school.admin_id).first()
+    if not admin_user:
+        raise HTTPException(status_code=404, detail="Yetkili kullanıcı bulunamadı")
+
+    try:
+        # 🔹 Okul bilgilerini güncelle
+        school.name = data.school_name or school.name
+        school.url_anaokul = data.url_anaokul or school.url_anaokul
+        school.url_ilkokul = data.url_ilkokul or school.url_ilkokul
+        school.url_ortaokul = data.url_ortaokul or school.url_ortaokul
+        school.url_lise = data.url_lise or school.url_lise
+
+        # 🔹 Yetkili kullanıcı bilgilerini güncelle
+        if data.admin_name or data.admin_surname:
+            admin_user.full_name = f"{data.admin_name} {data.admin_surname}".strip()
+        if data.admin_tc:
+            # TC değiştiriliyorsa aynı TC başka kullanıcıda var mı kontrol et
+            existing_tc = db.query(User).filter(
+                (User.tc == data.admin_tc) & (User.id != admin_user.id)
+            ).first()
+            if existing_tc:
+                raise HTTPException(status_code=422, detail="Bu TC başka kullanıcıya ait")
+            admin_user.tc = data.admin_tc
+            admin_user.username = data.admin_tc
+        if data.admin_phone:
+            admin_user.phone = data.admin_phone
+
+        db.commit()
+        db.refresh(school)
+        db.refresh(admin_user)
+        logger.debug(f"School updated successfully: {school.id}")
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating school: {str(e)}")
+        raise HTTPException(status_code=422, detail=f"Güncelleme sırasında hata: {str(e)}")
+
+    return {
+        "message": "Okul ve yetkili bilgileri başarıyla güncellendi",
+        "school": {
+            "id": school.id,
+            "name": school.name,
+            "url_anaokul": school.url_anaokul,
+            "url_ilkokul": school.url_ilkokul,
+            "url_ortaokul": school.url_ortaokul,
+            "url_lise": school.url_lise,
+        },
+        "admin_user": {
+            "id": admin_user.id,
+            "full_name": admin_user.full_name,
+            "tc": admin_user.tc,
+            "username": admin_user.username,
+            "phone": admin_user.phone,
+        },
     }
