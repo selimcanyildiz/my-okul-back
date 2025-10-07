@@ -149,7 +149,7 @@ def get_students_by_school(school_id: int, db: Session = Depends(get_db)):
             "tc": s.tc,
             "branch": f"{s.sube_seviye} / {s.sube_sinif}",
             "password": s.password,
-            "last_login": (s.last_login + timedelta(hours=3)).strftime("%d.%m.%Y %H:%M") if s.last_login else None,
+            "last_login": s.last_login.strftime("%d.%m.%Y %H:%M") if s.last_login else None,
             "school": {
                 "id": school.id,
                 "name": school.name,
