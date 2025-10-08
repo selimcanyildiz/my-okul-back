@@ -34,14 +34,14 @@ class StudentCreate(BaseModel):
     sube_seviye: str
     sube_sinif: str
     okul_adi: str
-    bgkull: str
-    bgsif: str
-    klbkull: str
-    klbsif: str
-    sınavzakull: str
-    sınavzasif: str
-    morpakull: str
-    morpasif: str
+    bgkull: Optional[str] = None
+    bgsif: Optional[str] = None
+    klbkull: Optional[str] = None
+    klbsif: Optional[str] = None
+    sinavzakull: Optional[str] = None
+    sinavzasif: Optional[str] = None
+    morpakull: Optional[str] = None
+    morpasif: Optional[str] = None
     parent_phone: str
     school_id: int  # hangi okula ait
 
@@ -59,8 +59,8 @@ class StudentUpdate(BaseModel):
     bgsif: Optional[str]
     klbkull: Optional[str]
     klbsif: Optional[str]
-    sınavzakull: Optional[str]
-    sınavzasif: Optional[str]
+    sinavzakull: Optional[str]
+    sinavzasif: Optional[str]
     morpakull: Optional[str]
     morpasif: Optional[str]
     cambridgekull: Optional[str]
