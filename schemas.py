@@ -38,6 +38,7 @@ class StudentCreate(BaseModel):
     bgsif: Optional[str] = None
     klbkull: Optional[str] = None
     klbsif: Optional[str] = None
+    klbcode: Optional[str] = None
     sinavzakull: Optional[str] = None
     sinavzasif: Optional[str] = None
     morpakull: Optional[str] = None
@@ -59,6 +60,7 @@ class StudentUpdate(BaseModel):
     bgsif: Optional[str]
     klbkull: Optional[str]
     klbsif: Optional[str]
+    klbcode: Optional[str]
     sinavzakull: Optional[str]
     sinavzasif: Optional[str]
     morpakull: Optional[str]
@@ -70,3 +72,7 @@ class StudentUpdate(BaseModel):
 
 class PasswordUpdate(BaseModel):
     new_password: str
+
+class StudentKlbUpdate(BaseModel):
+    tc: str
+    klbcode: str

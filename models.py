@@ -44,6 +44,7 @@ class Student(Base):
     bgsif = Column(String(50), nullable=True)
     klbkull = Column(String(50), nullable=True)
     klbsif = Column(String(50), nullable=True)
+    klbcode = Column(String(50), nullable=True)
     sinavzakull = Column(String(50), nullable=True)
     sinavzasif = Column(String(50), nullable=True)
     morpakull = Column(String(50), nullable=True)

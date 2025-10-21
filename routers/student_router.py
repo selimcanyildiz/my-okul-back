@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Student, School
-from schemas import StudentCreate, StudentUpdate, PasswordUpdate
+from schemas import StudentCreate, StudentUpdate, PasswordUpdate, StudentKlbUpdate
 import random
 from datetime import timedelta
+from typing import List
 
 router = APIRouter(prefix="/students", tags=["students"])
 
@@ -243,3 +244,27 @@ def update_student_password(student_id: int, password_update: PasswordUpdate, db
     return {"message": "Şifre başarıyla değiştirildi", "id": student.id}
 
 
+@router.post("/update_klb_bulk")
+def update_klb_bulk(students: List[StudentKlbUpdate], db: Session = Depends(get_db)):
+    """
+    Excel'den gelen TC ve Kolibri kodlarına göre öğrencilerin klbcode alanını toplu günceller.
+    """
+    if not students:
+        raise HTTPException(status_code=400, detail="Hiç veri gönderilmedi.")
+
+    updated_count = 0
+    not_found = []
+
+    for item in students:
+        student = db.query(Student).filter(Student.tc == item.tc).first()
+        if student:
+            student.klbcode = item.klbcode
+            updated_count += 1
+        else:
+            not_found.append(item.tc)
+
+    db.commit()
+    return {
+        "message": f"{updated_count} öğrenci güncellendi.",
+        "not_found": not_found
+    }
