@@ -5,15 +5,16 @@ from routers import school_router
 from routers import student_router
 from auth import get_current_user
 from database import get_db
-from models import User, Student, School
+from models import User, Student, School, Student, StudentPasswordReset
 from jwt_utils import create_access_token, generate_bilisimgaraji_jwt, generate_kolibri_jwt, decode_token, get_morpa_authcode
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timedelta
 # ... mevcut import'lar ...
 import xml.etree.ElementTree as ET
 import requests
 from fastapi import Request  # Client IP için
 import pytz
+from sms_utils import send_sms
 
 app = FastAPI(
     title="MY Okulları API",
@@ -47,6 +48,15 @@ class LoginRequest(BaseModel):
 class PlatformRequest(BaseModel):
     platformName: str
 
+class ForgotPasswordRequest(BaseModel):
+    username: str   # öğrencinin sistemde kullandığı username
+
+class ResetPasswordRequest(BaseModel):
+    username: str
+    code: str
+    new_password: str
+
+
 def authenticate_user(db: Session, username: str, password: str):
     # Önce users tablosuna bak
     user = db.query(User).filter(User.username == username, User.password == password).first()
@@ -74,6 +84,40 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
 
     token = create_access_token({"sub": user.username})
     return {"user": user, "access_token": token, "token_type": "bearer"}
+
+@app.post("/auth/forgot-password")
+def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    # 1) Öğrenciyi username'e göre bul
+    student = db.query(Student).filter(Student.username == req.username).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Bu kullanıcı adına ait öğrenci bulunamadı")
+
+    if not student.parent_phone:
+        raise HTTPException(status_code=400, detail="Bu öğrenci için kayıtlı veli telefonu yok")
+
+    # 2) 6 haneli random kod üret
+    import random
+    code = str(random.randint(100000, 999999))
+
+    # 3) Reset kaydı oluştur (10 dk geçerli olsun)
+    expires_at = datetime.utcnow() + timedelta(minutes=10)
+
+    reset = StudentPasswordReset(
+        student_id=student.id,
+        code=code,
+        expires_at=expires_at,
+        used=False,
+    )
+    db.add(reset)
+    db.commit()
+
+    # 4) SMS gönder
+    mesaj = f"Şifre yenileme kodunuz: {code} (10 dakika geçerlidir)."
+    # Netgsm hangi formatı istiyorsa ona göre; gerekirse '0'ı kırp vs.
+    send_sms(student.parent_phone, mesaj)
+
+    return {"success": True, "message": "Şifre yenileme kodu veli telefonuna SMS olarak gönderildi."}
+
 
 # @app.get("/stats")
 # def get_stats(
@@ -407,3 +451,43 @@ def validate_token(token: str = Query(...), db: Session = Depends(get_db)):
         "hidden_levels": []
     }
     return sso_user_dto
+
+@app.post("/auth/reset-password")
+def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
+    # 1) Öğrenciyi bul
+    student = db.query(Student).filter(Student.username == req.username).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Öğrenci bulunamadı")
+
+    now = datetime.utcnow()
+
+    # 2) Bu öğrenci için, süresi dolmamış, kullanılmamış en son reset kaydını bul
+    reset = (
+        db.query(StudentPasswordReset)
+        .filter(
+            StudentPasswordReset.student_id == student.id,
+            StudentPasswordReset.used == False,
+            StudentPasswordReset.expires_at > now,
+        )
+        .order_by(StudentPasswordReset.created_at.desc())
+        .first()
+    )
+
+    if not reset:
+        raise HTTPException(status_code=400, detail="Geçerli bir şifre yenileme isteği bulunamadı veya süresi doldu")
+
+    # 3) Kod doğru mu?
+    if reset.code != req.code:
+        raise HTTPException(status_code=400, detail="Kod hatalı")
+
+    # 4) Şifreyi güncelle (sen hash kullanmıyorsun, o yüzden direkt set ediyorum)
+    student.password = req.new_password
+    db.add(student)
+
+    # 5) Reset kaydını kullanılmış işaretle
+    reset.used = True
+    db.add(reset)
+
+    db.commit()
+
+    return {"success": True, "message": "Şifreniz başarıyla güncellendi."}

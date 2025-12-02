@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, func, TIMESTAMP
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Boolean, func, TIMESTAMP
+from datetime import datetime, timedelta
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -56,9 +57,16 @@ class Student(Base):
     username = Column(String(50), unique=True, nullable=False)
     password = Column(String(50), nullable=False)
 
-    parent_phone = Column(String(15), nullable=False)  # <-- Yeni alan
-
     # ilişki
     school_id = Column(Integer, ForeignKey("schools.id"), nullable=False)
     school = relationship("School", back_populates="students")
 
+class StudentPasswordReset(Base):
+    __tablename__ = "student_password_resets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
+    code = Column(String(10), nullable=False)         # SMS ile giden kod (plain)
+    expires_at = Column(DateTime, nullable=False)     # Son geçerlilik zamanı
+    used = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, nullable=False, default=func.now())
